@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reposición de bebidas</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F2F4F5;--ink:#1B2A33;--mut:#5E6E78;--line:#D9DFE2;--card:#fff;--mus:#E2A400;--red:#C8372D;--grn:#4F7A3A;--gry:#9AA6AD}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.45 Archivo,system-ui,sans-serif}
+header{background:var(--ink);color:#fff;padding:18px 24px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:22px;font-weight:800}
+header small{color:#B8C4CB;display:block;font-weight:400;font-size:13px}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+select,input{font:inherit;color:inherit;border:1px solid var(--line);border-radius:6px;padding:7px 9px;background:#fff}
+button{font:600 14px Archivo,sans-serif;border:0;border-radius:6px;padding:9px 14px;background:var(--mus);color:var(--ink);cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--mus);outline-offset:2px}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+header select{background:#fff;color:var(--ink);min-width:190px}
+#msg{margin:0 0 14px;padding:10px 14px;border-radius:6px;background:#FFF4D6;border:1px solid #EBD28A;display:none}
+#msg.err{background:#FBE3E0;border-color:#E3A8A2}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.kpi b{display:block;font-size:30px;font-weight:800;line-height:1.1}
+.kpi span{color:var(--mut);font-size:13px}
+section{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-top:16px}
+h2{margin:0 0 4px;font-size:17px;font-weight:800}
+.sub{margin:0 0 12px;color:var(--mut);font-size:13px}
+.params{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.params label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)}
+.params input,.params select{width:100%}
+.rank{display:grid;grid-template-columns:minmax(150px,260px) 1fr 70px 34px;gap:10px;align-items:center;margin:6px 0;font-size:14px}
+.track{background:#EAEEF0;border-radius:4px;height:16px}
+.fill{height:100%;border-radius:4px;background:var(--ink)}
+.abc{font-weight:800;text-align:center;border-radius:4px;font-size:12px;padding:2px 0;background:#EAEEF0}
+.abc.A{background:var(--mus)}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:1060px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-size:12.5px;color:var(--mut);font-weight:600}
+th:first-child,td:first-child{text-align:left}
+td input{width:84px;text-align:right}
+td.pedir{font-weight:800;font-size:16px}
+.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12.5px;font-weight:600;color:#fff}
+.tag.r{background:var(--red)}.tag.y{background:var(--mus);color:var(--ink)}.tag.g{background:var(--grn)}.tag.n{background:var(--gry)}
+.stores{display:flex;flex-wrap:wrap;gap:8px}
+.stores div{border:1px solid var(--line);border-radius:6px;padding:8px 12px}
+.stores b{font-size:18px;display:block}
+.note{color:var(--mut);font-size:13px;margin-top:10px}
+@media(max-width:640px){.rank{grid-template-columns:110px 1fr 50px 30px;font-size:13px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Reposición de bebidas</h1><small id="upd">Cargando…</small></div>
+  <div class="bar">
+    <label for="tienda" style="font-size:13px">Tienda</label>
+    <select id="tienda"></select>
+    <button id="reload" type="button">Actualizar datos</button>
+  </div>
+</header>
+<main>
+  <p id="msg"></p>
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2>Parámetros de pedido</h2>
+    <p class="sub">Se guardan en este navegador. Cambian el cálculo de toda la tabla.</p>
+    <div class="params">
+      <label>Días que cubre el dato (mes)<input type="number" id="p_dias" min="1"></label>
+      <label>Pedidos por semana<select id="p_ped"><option value="1">1</option><option value="2">2</option></select></label>
+      <label>Días de entrega del proveedor<input type="number" id="p_lead" min="0"></label>
+      <label>Stock de seguridad (%)<input type="number" id="p_seg" min="0"></label>
+      <label>Ajuste de tendencia (%)<input type="number" id="p_tend"></label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Qué se vende</h2>
+    <p class="sub">Promedio semanal de unidades (el mes completo aparece al pasar el cursor). A = productos que suman el 80% del volumen, B = hasta el 95%, C = el resto.</p>
+    <div id="rank"></div>
+    <div class="stores" id="stores" style="margin-top:12px"></div>
+  </section>
+
+  <section>
+    <div class="bar" style="justify-content:space-between">
+      <div><h2>Cuánto pedir</h2>
+      <p class="sub" style="margin:0" id="plan"></p></div>
+      <button id="csv" type="button">Exportar pedido (CSV)</button>
+    </div>
+    <div class="wrap"><table>
+      <thead><tr><th>Producto</th><th>Vendido (mes)</th><th>Promedio/semana</th><th>Promedio/día</th><th>Inventario actual</th><th>Unidades por caja</th><th>Días de stock</th><th>Estado</th><th>Pedir (cajas)</th><th>Equivale a (unid.)</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <p class="note" id="nota"></p>
+  </section>
+</main>
+
+<script>
+// ===== CONFIGURACIÓN: pega aquí la URL /exec de tu Apps Script y el mismo token =====
+const CONFIG = { URL: "https://script.google.com/macros/s/AKfycbyF2hHXZ2q5iKdGPf4gHe1CE6w1hgEm-oA9dy7Q8vHDxx6H4CSr0pLF1LAajCoRj4Yb/exec", TOKEN: "" };
+// ====================================================================================
+
+const DEMO = [["BEBIDA COCA COLA ORIGINAL 400ml",180],["BEBIDA COCA COLA SIN AZUCAR 400ml",24],["BEBIDA AGUA SIN GAS",28],["BEBIDA FANTA NARANJA LATA",22],["BEBIDA COCA COLA LATA ORIGINAL 350ml",20],["BEBIDA SPRITE 400ml",17],["BEBIDA FANTA ROSA LATA",17],["BEBIDA QUATRO 400ml",14],["SODA 400ml",11]]
+  .map(([p,c])=>({negocio:"BENDITO HOT DOGS PLAZA NATURA",categoria:"3.-Bebidas",producto:p,cantidad:c}));
+
+const LS = "bebidas_dashboard_v1";
+let S = {params:{dias:30,ped:2,lead:1,seg:20,tend:0}, inv:{}, pack:{}, tienda:"Todas"};
+try { const g = JSON.parse(localStorage.getItem(LS)||"null"); if (g) S = Object.assign(S, g, {params:Object.assign(S.params, g.params)}); } catch(e){}
+const save = () => { try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){} };
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => n.toLocaleString("es-CO",{maximumFractionDigits:1});
+let rows = [], items = [];
+
+function msg(t, err){ const m=$("msg"); m.style.display=t?"block":"none"; m.textContent=t||""; m.className=err?"err":""; }
+
+async function load(){
+  $("upd").textContent = "Cargando…";
+  if (!CONFIG.URL){
+    rows = DEMO; msg("Mostrando datos de ejemplo. Pega la URL de tu Apps Script en CONFIG.URL para ver tus tiendas.");
+    $("upd").textContent = "Datos de ejemplo";
+  } else {
+    try {
+      const r = await fetch(CONFIG.URL + "?token=" + encodeURIComponent(CONFIG.TOKEN));
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      rows = d.rows; msg("");
+      $("upd").textContent = "Actualizado " + new Date(d.actualizado).toLocaleString("es-CO");
+    } catch(e){
+      rows = []; msg("No se pudieron cargar los datos: " + e.message + ". Revisa la URL, el token y que la implementación esté en «Cualquier persona».", true);
+      $("upd").textContent = "Sin conexión";
+    }
+  }
+  fillStores(); render();
+}
+
+function fillStores(){
+  const names = [...new Set(rows.map(r=>r.negocio))].sort();
+  if (S.tienda !== "Todas" && !names.includes(S.tienda)) S.tienda = "Todas";
+  $("tienda").innerHTML = ["Todas",...names].map(n=>`<option ${n===S.tienda?"selected":""}>${esc(n)}</option>`).join("");
+}
+
+function compute(){
+  const P = S.params, map = {};
+  rows.filter(r => S.tienda==="Todas" || r.negocio===S.tienda).forEach(r => {
+    const o = map[r.producto] ||= {producto:r.producto, qty:0, inv:0, hasInv:false};
+    o.qty += r.cantidad;
+    const k = r.negocio + "|" + r.producto;
+    if (S.inv[k] !== undefined && S.inv[k] !== "") { o.inv += Number(S.inv[k]); o.hasInv = true; }
+  });
+  items = Object.values(map).map(o => {
+    o.daily = o.qty / P.dias * (1 + P.tend/100);
+    o.weekly = o.qty / P.dias * 7;
+    o.pack = Math.max(1, Number(S.pack[o.producto]) || 1);
+    const R = 7 / P.ped;
+    const need = o.daily * (R + P.lead) * (1 + P.seg/100);
+    o.cajas = Math.ceil(Math.max(0, need - o.inv) / o.pack - 1e-9);
+    o.pedir = o.cajas * o.pack;
+    o.dias = o.daily > 0 ? o.inv / o.daily : Infinity;
+    o.estado = !o.hasInv ? "n" : o.dias < P.lead*(1+P.seg/100) ? "r" : o.dias < P.lead + R ? "y" : "g";
+    return o;
+  }).sort((a,b) => b.qty - a.qty);
+}
+
+function render(){
+  compute();
+  const P = S.params, R = 7 / P.ped;
+  $("plan").textContent = "Con " + P.ped + " pedido" + (P.ped>1?"s":"") + " por semana (uno cada " + fmt(R) + " días) y " + P.lead + " día" + (P.lead==1?"":"s") + " de entrega, cada pedido cubre " + fmt(R+P.lead) + " días de venta más " + P.seg + "% de seguridad, menos lo que ya tengas. El pedido se expresa en cajas completas.";
+  const total = items.reduce((s,o)=>s+o.qty,0), lead = items[0];
+  const rojos = items.filter(o=>o.estado==="r").length, aPedir = items.reduce((s,o)=>s+o.cajas,0);
+  $("kpis").innerHTML = [
+    [fmt(total/S.params.dias*7),"unidades por semana (promedio, todas las bebidas)"],
+    [lead ? Math.round(lead.qty/total*100)+"%" : "–", lead ? "del volumen es " + esc(lead.producto) : "sin datos"],
+    [rojos,"productos en rojo (stock crítico)"],
+    [fmt(aPedir),"cajas sugeridas a pedir"]
+  ].map(([b,s])=>`<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join("");
+
+  let acc = 0;
+  $("rank").innerHTML = items.map(o => {
+    const before = acc; acc += o.qty;
+    const c = before/total < .8 ? "A" : before/total < .95 ? "B" : "C";
+    return `<div class="rank"><span>${esc(o.producto)}</span><div class="track"><div class="fill" style="width:${o.qty/items[0].qty*100}%"></div></div><span style="text-align:right" title="${fmt(o.qty)} en el mes">${fmt(o.qty/S.params.dias*7)}</span><span class="abc ${c}">${c}</span></div>`;
+  }).join("") || "<p class='sub'>Sin datos.</p>";
+
+  const byStore = {};
+  rows.forEach(r => byStore[r.negocio] = (byStore[r.negocio]||0) + r.cantidad);
+  $("stores").innerHTML = S.tienda==="Todas" ? Object.entries(byStore).map(([n,q])=>`<div><b>${fmt(q)}</b>${esc(n)}</div>`).join("") : "";
+
+  const lab = {r:"Pedir ya",y:"Cerca",g:"Bien",n:"Sin inventario"};
+  const ro = S.tienda==="Todas" ? "readonly title='Elige una tienda para editar el inventario'" : "";
+  $("tbody").innerHTML = items.map((o,i) => `<tr>
+    <td>${esc(o.producto)}</td><td>${fmt(o.qty)}</td><td>${fmt(o.weekly)}</td><td>${fmt(o.daily)}</td>
+    <td><input type="number" min="0" data-i="${i}" data-f="inv" value="${o.hasInv ? o.inv : ""}" ${ro}></td>
+    <td><input type="number" min="1" data-i="${i}" data-f="pack" value="${S.pack[o.producto]||""}" placeholder="1"></td>
+    <td>${o.hasInv && isFinite(o.dias) ? fmt(o.dias) : "–"}</td>
+    <td><span class="tag ${o.estado}">${lab[o.estado]}</span></td>
+    <td class="pedir">${fmt(o.cajas)}</td><td>${fmt(o.pedir)}</td></tr>`).join("");
+  $("nota").textContent = S.tienda==="Todas"
+    ? "En «Todas» el inventario es la suma de lo que registres por tienda. Para editarlo, elige una tienda."
+    : "Sin inventario registrado, el pedido cubre toda la demanda proyectada. Si no indicas las unidades por caja, cada unidad cuenta como una caja.";
+}
+
+$("tbody").addEventListener("change", e => {
+  const t = e.target, o = items[t.dataset.i]; if (!o) return;
+  if (t.dataset.f === "inv") S.inv[S.tienda + "|" + o.producto] = t.value;
+  else S.pack[o.producto] = t.value;
+  save(); render();
+});
+["dias","ped","lead","seg","tend"].forEach(k => {
+  const el = $("p_"+k); el.value = S.params[k];
+  el.addEventListener("change", () => { S.params[k] = Math.max(k==="tend"?-100:0, Number(el.value)||0) || (k==="dias"||k==="ped"?1:0); el.value = S.params[k]; save(); render(); });
+});
+$("tienda").addEventListener("change", e => { S.tienda = e.target.value; save(); render(); });
+$("reload").addEventListener("click", load);
+$("csv").addEventListener("click", () => {
+  const h = ["Tienda","Producto","Vendido","Promedio semana","Promedio dia","Inventario","Unidades por caja","Cajas a pedir","Unidades a pedir"];
+  const l = items.map(o => [S.tienda,o.producto,o.qty,o.weekly.toFixed(1),o.daily.toFixed(2),o.hasInv?o.inv:"",o.pack,o.cajas,o.pedir].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["\ufeff"+[h.join(","),...l].join("\n")],{type:"text/csv"}));
+  a.download = "pedido_bebidas_" + new Date().toISOString().slice(0,10) + ".csv"; a.click();
+});
+load();
+</script>
+</body>
+</html>
